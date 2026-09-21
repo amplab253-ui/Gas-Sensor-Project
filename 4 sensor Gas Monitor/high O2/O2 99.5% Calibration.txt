@@ -1,0 +1,66 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include "DFRobot_EOxygenSensor.h"
+
+#define I2C_SDA 21
+#define I2C_SCL 22
+#define OXYGEN_I2C_ADDRESS E_OXYGEN_ADDRESS_0
+
+DFRobot_EOxygenSensor_I2C oxygen(&Wire, OXYGEN_I2C_ADDRESS);
+
+const unsigned long SENSOR_STABILIZE_TIME_MS = 30000;
+
+void setup()
+{
+  Serial.begin(115200);
+  while(!Serial); 
+
+  Wire.begin(I2C_SDA, I2C_SCL);
+
+  while(!oxygen.begin()){
+    Serial.println("No devices found!");
+    delay(1000);
+  } 
+  Serial.println("Device connected successfully!");
+
+  // ==========================================
+  // CALIBRATION SEQUENCE
+  // ==========================================
+  Serial.println("99.5% O2 calibration selected.");
+  Serial.println("Place the sensor in 99.5% oxygen gas now.");
+  Serial.print("Waiting ");
+  Serial.print(SENSOR_STABILIZE_TIME_MS / 1000);
+  Serial.println(" seconds for the sensor reading to stabilize...");
+  delay(SENSOR_STABILIZE_TIME_MS);
+
+  // 1. Clear any old, faulty calibration data
+  if(oxygen.clearCalibration()) {
+    Serial.println("Old calibration data cleared successfully!");
+  } else {
+    Serial.println("Failed to clear calibration.");
+  }
+  delay(1000);
+
+  // 2. Set the current environment as 99.5% oxygen.
+  if(oxygen.calibration_99_5()) {
+    Serial.println("99.5% VOL Single-Point Calibration successful!");
+  } else {
+    Serial.println("Calibration failed.");
+  }
+
+  Serial.print("Calibration state: 0x");
+  Serial.println(oxygen.readCalibrationState(), HEX);
+  delay(1000);
+  // ==========================================
+}
+
+void loop()
+{
+  float o2_concentration = oxygen.readOxygenConcentration();
+  
+  Serial.print("Oxygen concentration is ");
+  Serial.print(o2_concentration);
+  Serial.println("% VOL");
+  
+  delay(1000);
+}
